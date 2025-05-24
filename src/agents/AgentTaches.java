@@ -26,7 +26,6 @@ public class AgentTaches extends Agent {
     protected void setup() {
         System.out.println("AgentTaches lancé...");
         taskManager = new TaskManager();
-        gui = new InterfaceGraphique(this); // Interface graphique
 
         addBehaviour(new TickerBehaviour(this, 1000) {
             @Override
