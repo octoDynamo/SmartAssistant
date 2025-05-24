@@ -1,5 +1,6 @@
 package agents;
 
+
 import gui.InterfaceGraphique;
 import jade.core.Agent;
 import jade.core.AID;
@@ -7,16 +8,23 @@ import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
 
 public class ClientAgent extends Agent {
-    private InterfaceGraphique gui; // Store GUI instance
+    private InterfaceGraphique gui;
 
     protected void setup() {
         System.out.println("ClientAgent prêt. Lancement de l'interface graphique...");
-        gui = new InterfaceGraphique(this); // Initialize GUI
+        ACLMessage testMsg = new ACLMessage(ACLMessage.REQUEST);
+        testMsg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
+        testMsg.setContent("test_connexion");
+        send(testMsg);
+        System.out.println("Message de test envoyé à agentRecherche.");
+
+        gui = new InterfaceGraphique(this);
+
         addBehaviour(new CyclicBehaviour() {
             public void action() {
                 ACLMessage msg = receive();
                 if (msg != null) {
-                    gui.afficherReponse(msg.getContent()); // Call non-static method
+                    gui.afficherReponse(msg.getContent());
                 } else {
                     block();
                 }
@@ -24,34 +32,46 @@ public class ClientAgent extends Agent {
         });
     }
 
+
     public void envoyerCommande(String commande) {
         ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+        AID destinataire = null;
+        String content = "";
+
         if (commande.startsWith("meteo ")) {
-            msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
-            msg.setContent("recherche_meteo:" + commande.substring(6));
+            destinataire = new AID("agentRecherche", AID.ISLOCALNAME);
+            content = "recherche_meteo:" + commande.substring(6);
         } else if (commande.startsWith("recette ")) {
-            msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
-            msg.setContent("recherche_recette:" + commande.substring(8));
+            destinataire = new AID("agentRecherche", AID.ISLOCALNAME);
+            content = "recherche_recette:" + commande.substring(8);
         } else if (commande.startsWith("planifie ")) {
-            msg.addReceiver(new AID("agentEvenements", AID.ISLOCALNAME));
+            destinataire = new AID("agentEvenements", AID.ISLOCALNAME);
             String[] parts = commande.substring(9).split(":");
-            msg.setContent("planifie_evenement:" + parts[0] + ":" + (parts.length > 1 ? parts[1] : "2025-12-31 15:00"));
+            content = "planifie_evenement:" + parts[0] + ":" + (parts.length > 1 ? parts[1] : "2025-12-31 15:00");
         } else if (commande.equals("liste_evenements")) {
-            msg.addReceiver(new AID("agentEvenements", AID.ISLOCALNAME));
-            msg.setContent("liste_evenements");
+            destinataire = new AID("agentEvenements", AID.ISLOCALNAME);
+            content = "liste_evenements";
         } else {
-            msg.addReceiver(new AID("agentTaches", AID.ISLOCALNAME));
-            String[] parts = commande.startsWith("ajoute ") ? commande.substring(7).split(":") : new String[]{commande};
-            String content = commande;
+            destinataire = new AID("agentTaches", AID.ISLOCALNAME);
             if (commande.startsWith("ajoute ")) {
+                String[] parts = commande.substring(7).split(":");
                 content = "ajoute_tache:" + parts[0] + ":" + (parts.length > 1 ? parts[1] : "2025-12-31") + ":" + (parts.length > 2 ? parts[2] : "Medium");
             } else if (commande.startsWith("supprime ")) {
                 content = "supprime_tache:" + commande.substring(9);
             } else if (commande.equals("liste")) {
                 content = "liste_taches";
+            } else {
+                content = commande;
             }
-            msg.setContent(content);
         }
-        send(msg);
+
+        // Envoi du message
+        if (destinataire != null) {
+            msg.addReceiver(destinataire);
+            msg.setContent(content);
+            send(msg);
+        } else {
+            gui.afficherReponse("Commande non reconnue.");
+        }
     }
-}
+}   
