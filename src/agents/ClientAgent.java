@@ -87,6 +87,15 @@ public class ClientAgent extends Agent {
                 }
                 msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
                 msg.setContent("recherche_recette:" + recette);
+            } else if (cmdLower.startsWith("recherche ")) {
+                String terme = commande.substring(10).trim();
+                if (terme.isEmpty()) {
+                    gui.afficherReponse("Erreur : Terme de recherche manquant.");
+                    LOGGER.warning("Empty search term for recherche command.");
+                    return;
+                }
+                msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
+                msg.setContent("recherche_web:" + terme);
             } else if (cmdLower.startsWith("ajoute ")) {
                 handleAjouteCommand(commande, msg);
             } else if (cmdLower.startsWith("supprime ") && !cmdLower.contains("événement")) {
