@@ -16,9 +16,9 @@
     <orderEntry type="library" name="natty-0.13" level="project" />
     <orderEntry type="library" name="json-202403031" level="project" />
     <orderEntry type="library" name="jade" level="project" />
-    <orderEntry type="library" name="jackson-core-2.9.9" level="project" />
     <orderEntry type="library" name="jackson-databind-2.9.9.3" level="project" />
     <orderEntry type="library" name="jackson-datatype-jsr310-2.19.0" level="project" />
     <orderEntry type="library" name="jackson-annotations-2.19.0" level="project" />
+    <orderEntry type="library" name="jackson-core-2.9.9" level="project" />
   </component>
 </module>

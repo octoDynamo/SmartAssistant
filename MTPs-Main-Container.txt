@@ -1,1 +1,1 @@
-http://10.5.0.2:7778/acc
+http://host.docker.internal:7778/acc
