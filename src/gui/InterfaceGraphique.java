@@ -214,7 +214,7 @@ public class InterfaceGraphique extends JFrame {
             } else if (!commande.toLowerCase().equals("liste") && !commande.toLowerCase().equals("liste_evenements") &&
                     !commande.toLowerCase().equals("vider") && !commande.toLowerCase().startsWith("meteo ") &&
                     !commande.toLowerCase().startsWith("recette ")) {
-                afficherReponse("Commande inconnue. Essayez : planifie <événement>:<date>, liste_evenements, supprime événement <nom>, ajoute <tâche>:<date>:<priorité>, supprime <tâche>, liste, vider, meteo <ville>, recette <nom>");
+                afficherReponse("Commande inconnue. Essayez : planifie <événement>:<date>, liste_evenements, supprime événement <nom>, ajoute <tâche>:<date>:<priorité>, supprime <tâche>, liste, vider, meteo <ville>, recette <nom>, recherche <item>");
                 statusLabel.setText("Error: Unknown command");
                 return;
             }
