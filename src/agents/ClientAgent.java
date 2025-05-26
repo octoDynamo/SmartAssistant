@@ -96,7 +96,16 @@ public class ClientAgent extends Agent {
                 }
                 msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
                 msg.setContent("recherche_web:" + terme);
-            } else if (cmdLower.startsWith("ajoute ")) {
+            } else if (cmdLower.startsWith("wiki ")) {
+                String terme = commande.substring(5).trim();
+                if (terme.isEmpty()) {
+                    gui.afficherReponse("Erreur : Terme de recherche Wiki manquant.");
+                    LOGGER.warning("Empty Wiki search term.");
+                    return;
+                }
+                msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
+                msg.setContent("recherche_wiki:" + terme);
+            }   else if (cmdLower.startsWith("ajoute ")) {
                 handleAjouteCommand(commande, msg);
             } else if (cmdLower.startsWith("supprime ") && !cmdLower.contains("événement")) {
                 String description = commande.substring(9).trim();
@@ -114,7 +123,7 @@ public class ClientAgent extends Agent {
                 msg.addReceiver(new AID("agentTaches", AID.ISLOCALNAME));
                 msg.setContent("vider_taches");
             } else {
-                gui.afficherReponse("Commande inconnue. Essayez : planifie <événement>:<date>, liste_evenements, supprime événement <nom>, ajoute <tâche>:<date>:<priorité>, supprime <tâche>, liste, vider, meteo <ville>, recette <nom>");
+                gui.afficherReponse("Commande inconnue. Essayez : planifie <événement>:<date>, liste_evenements, supprime événement <nom>, ajoute <tâche>:<date>:<priorité>, supprime <tâche>, liste, vider, meteo <ville>, recette <nom>, wiki <terme>");
                 LOGGER.warning("Unknown command: " + commande);
                 return;
             }

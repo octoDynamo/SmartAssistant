@@ -13,7 +13,7 @@ import org.json.JSONObject;
 
 public class AgentRecherche extends Agent {
 
-    private static final String OPENWEATHER_API_KEY = "41b0205404f23ded8d76ca6f648c9ee4"; // Remplace par ta clé OpenWeatherMap
+    private static final String OPENWEATHER_API_KEY = "41b0205404f23ded8d76ca6f648c9ee4";
 
     protected void setup() {
         System.out.println("AgentRecherche démarré.");
@@ -31,6 +31,9 @@ public class AgentRecherche extends Agent {
                     } else if (contenu.startsWith("recherche_recette:")) {
                         String nomRecette = contenu.split(":", 2)[1];
                         resultat = fetchRecipe(nomRecette);
+                    } else if (contenu.startsWith("recherche_wiki:")) {
+                        String terme = contenu.split(":", 2)[1];
+                        resultat = fetchWiki(terme);
                     } else if (contenu.startsWith("recherche_web:")) {
                         String requete = contenu.split(":", 2)[1];
                         resultat = fetchWebSearch(requete);
@@ -138,4 +141,42 @@ public class AgentRecherche extends Agent {
             return "Erreur lors de la recherche web.";
         }
     }
+
+    // -------- API WIKIPEDIA --------
+    private String fetchWiki(String terme) {
+        try {
+            String urlStr = "https://fr.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext=true&format=json&titles=" + terme.replace(" ", "%20");
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder responseSB = new StringBuilder();
+            String line;
+            while ((line = in.readLine()) != null) {
+                responseSB.append(line);
+            }
+            in.close();
+
+            JSONObject json = new JSONObject(responseSB.toString());
+            JSONObject pages = json.getJSONObject("query").getJSONObject("pages");
+
+            String cle = pages.keys().next(); // clé dynamique
+            JSONObject page = pages.getJSONObject(cle);
+
+            if (page.has("extract")) {
+                String extrait = page.getString("extract");
+                if (extrait.isEmpty()) {
+                    return "Aucun extrait trouvé pour : " + terme;
+                }
+                return "Extrait Wikipedia :\n" + extrait;
+            } else {
+                return "Aucun résultat trouvé sur Wikipedia pour : " + terme;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur lors de la recherche Wikipedia.";
+        }
+    }
+
 }
