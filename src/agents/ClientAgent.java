@@ -105,7 +105,10 @@ public class ClientAgent extends Agent {
                 }
                 msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
                 msg.setContent("recherche_wiki:" + terme);
-            }   else if (cmdLower.startsWith("ajoute ")) {
+            } else if (cmdLower.equals("news")) {
+                msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
+                msg.setContent("recherche_news");
+            } else if (cmdLower.startsWith("ajoute ")) {
                 handleAjouteCommand(commande, msg);
             } else if (cmdLower.startsWith("supprime ") && !cmdLower.contains("événement")) {
                 String description = commande.substring(9).trim();

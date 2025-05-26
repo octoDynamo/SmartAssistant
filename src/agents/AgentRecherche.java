@@ -8,6 +8,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -37,6 +39,8 @@ public class AgentRecherche extends Agent {
                     } else if (contenu.startsWith("recherche_web:")) {
                         String requete = contenu.split(":", 2)[1];
                         resultat = fetchWebSearch(requete);
+                    } else if (contenu.equals("recherche_news")) {
+                        resultat = getNews();
                     }
 
                     if (resultat != null) {
@@ -176,6 +180,48 @@ public class AgentRecherche extends Agent {
         } catch (Exception e) {
             e.printStackTrace();
             return "Erreur lors de la recherche Wikipedia.";
+        }
+    }
+    // -------- API NEWS --------
+    private String getNews() {
+        try {
+            String apiKey = "pub_7ca1ae106dda4f66b19bd9bcc379251f";
+            String urlStr = "https://newsdata.io/api/1/news?apikey=" + apiKey + "&language=fr&country=fr";
+            URL url = new URL(urlStr);
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = in.readLine()) != null) {
+                response.append(line);
+            }
+            in.close();
+
+            JSONObject json = new JSONObject(response.toString());
+
+            if (!json.has("results")) {
+                return "Aucun résultat renvoyé par l'API (peut-être aucune actualité ou clé incorrecte).";
+            }
+
+            JSONArray articles = json.getJSONArray("results");
+
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < Math.min(3, articles.length()); i++) {
+                JSONObject article = articles.getJSONObject(i);
+                String title = article.optString("title");
+                String link = article.optString("link");
+                result.append((i + 1)).append(". ").append(title).append("\n").append(link).append("\n\n");
+            }
+
+            return result.toString().isEmpty() ? "Aucune actualité trouvée aujourd'hui." : result.toString();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur : " + e.getMessage(); // Affiche l'erreur précise
         }
     }
 
