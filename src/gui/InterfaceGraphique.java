@@ -278,7 +278,7 @@ public class InterfaceGraphique extends JFrame {
                     }
                     onglets.setSelectedIndex(onglets.indexOfTab("Tasks"));
                     statusLabel.setText("Tasks list updated");
-                } else if (message.toLowerCase().startsWith("météo à") || message.toLowerCase().startsWith("recette pour")) {
+                } else if (message.toLowerCase().startsWith("météo à") || message.toLowerCase().startsWith("recette :") || message.toLowerCase().startsWith("extrait wikipedia :")) {
                     zoneRecherche.setText(message);
                     onglets.setSelectedIndex(onglets.indexOfTab("Search"));
                     statusLabel.setText("Search results updated");
