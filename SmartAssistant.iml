@@ -20,5 +20,7 @@
     <orderEntry type="library" name="jackson-databind-2.9.9.3" level="project" />
     <orderEntry type="library" name="jackson-datatype-jsr310-2.19.0" level="project" />
     <orderEntry type="library" name="jackson-annotations-2.19.0" level="project" />
+    <orderEntry type="library" name="flatlaf-3.6" level="project" />
+    <orderEntry type="library" name="flatlaf-extras-3.6" level="project" />
   </component>
 </module>
