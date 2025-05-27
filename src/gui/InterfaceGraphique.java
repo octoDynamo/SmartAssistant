@@ -249,4 +249,64 @@ public class InterfaceGraphique extends JFrame {
             }
         });
     }
+
+    public String showTimePicker() {
+        JDialog dialog = new JDialog(this, "Sélectionner l'heure de l'événement", true);
+        dialog.setLayout(new FlowLayout());
+        dialog.setSize(300, 150);
+        dialog.setLocationRelativeTo(this);
+
+        Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
+
+        // Hour and minute dropdowns
+        String[] hours = new String[24];
+        for (int i = 0; i < 24; i++) {
+            hours[i] = String.format("%02d", i);
+        }
+        String[] minutes = {"00", "15", "30", "45"};
+
+        JComboBox<String> hourCombo = new JComboBox<>(hours);
+        JComboBox<String> minuteCombo = new JComboBox<>(minutes);
+        hourCombo.setFont(regularFont);
+        minuteCombo.setFont(regularFont);
+        hourCombo.setBackground(new Color(60, 63, 65));
+        minuteCombo.setBackground(new Color(60, 63, 65));
+        hourCombo.setForeground(Color.WHITE);
+        minuteCombo.setForeground(Color.WHITE);
+
+        // Set default to current hour
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        hourCombo.setSelectedIndex(cal.get(java.util.Calendar.HOUR_OF_DAY));
+        minuteCombo.setSelectedIndex(0);
+
+        JButton okButton = new JButton("OK");
+        JButton cancelButton = new JButton("Annuler");
+        okButton.setFont(regularFont);
+        cancelButton.setFont(regularFont);
+        okButton.setBackground(new Color(76, 175, 80));
+        cancelButton.setBackground(new Color(244, 67, 54));
+        okButton.setForeground(Color.WHITE);
+        cancelButton.setForeground(Color.WHITE);
+
+        okButton.addActionListener(e -> dialog.dispose());
+        cancelButton.addActionListener(e -> {
+            hourCombo.setSelectedItem(null);
+            dialog.dispose();
+        });
+
+        dialog.add(new JLabel("Heure: ", SwingConstants.RIGHT));
+        dialog.add(hourCombo);
+        dialog.add(new JLabel(":", SwingConstants.CENTER));
+        dialog.add(minuteCombo);
+        dialog.add(okButton);
+        dialog.add(cancelButton);
+
+        dialog.getContentPane().setBackground(new Color(35, 35, 50));
+        dialog.setVisible(true);
+
+        if (hourCombo.getSelectedItem() == null || minuteCombo.getSelectedItem() == null) {
+            return null;
+        }
+        return hourCombo.getSelectedItem() + ":" + minuteCombo.getSelectedItem();
+    }
 }
