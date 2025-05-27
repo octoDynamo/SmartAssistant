@@ -43,9 +43,18 @@ public class AgentTaches extends Agent {
                     } else if (content.contains("liste")) {
                         List<Task> tasks = taskManager.getSortedTasks();
                         StringBuilder sb = new StringBuilder("📋 Liste des tâches :\n");
-                        for (Task t : tasks) sb.append(t).append("\n");
+                        //for (Task t : tasks) sb.append(t).append("\n");
+                        for (Task t : tasks) {
+                            sb.append("- ")
+                                    .append(t.getDescription())
+                                    .append(" (Due: ")
+                                    .append(t.getDateTime())
+                                    .append(", Priority: ")
+                                    .append(t.getPriority())
+                                    .append(")\n");
+                        }
                         sendReply(msg, sb.toString());
-                        gui.afficherReponse(sb.toString());
+                       gui.afficherReponse(sb.toString());
 
                     }  else if (content.toLowerCase().startsWith("ajoute ")) {
                         // Traitement des commandes naturelles
@@ -160,7 +169,8 @@ public class AgentTaches extends Agent {
                 case 3 -> "Basse";
                 default -> "Moyenne";
             };
-            return "📌 " + description + "\n🕒 " + dateTime + " | 🔺 Priorité: " + prioStr;
+            return "- " + description + " (Due: " + dateTime + ", Priority: " + prioStr + ")";
+            //return "📌 " + description + "\n🕒 " + dateTime + " | 🔺 Priorité: " + prioStr;
         }
     }
 
