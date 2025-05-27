@@ -103,7 +103,7 @@ public class ClientAgent extends Agent {
                 }
                 msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
                 msg.setContent("recherche_wiki:" + terme);
-            } else if (cmdLower.equals("news")) {
+            } else if (cmdLower.equals("actualités")) {
                 msg.addReceiver(new AID("agentRecherche", AID.ISLOCALNAME));
                 msg.setContent("recherche_news");
             } else if (cmdLower.startsWith("ajoute ")) {
