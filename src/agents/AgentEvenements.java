@@ -7,12 +7,14 @@ import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
 import models.Event;
-
 import java.io.File;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Logger;
 
 public class AgentEvenements extends Agent {
@@ -33,12 +35,12 @@ public class AgentEvenements extends Agent {
             public void action() {
                 ACLMessage msg = receive();
                 if (msg != null) {
-                    String contenu = msg.getContent().trim();
+                    String contenu = msg.getContent().trim().replaceAll("[\\s\\u00A0\\u200B\\uFEFF]+", " ");
                     ACLMessage reply = msg.createReply();
                     reply.setPerformative(ACLMessage.INFORM);
 
                     try {
-                        LOGGER.info("Received command: " + contenu);
+                        LOGGER.info("Received command: '" + contenu + "'");
                         if (contenu.startsWith("planifie_evenement:")) {
                             String[] parts = contenu.split(":", 3);
                             if (parts.length < 2) {
@@ -48,12 +50,38 @@ public class AgentEvenements extends Agent {
                             if (description.isEmpty()) {
                                 throw new IllegalArgumentException("Description vide");
                             }
-                            String dateStr = parts.length > 2 ? parts[2].trim() : "2025-12-31 15:00";
+                            String dateTimeStr = parts.length > 2 ? parts[2].trim() : "2025-12-31;15:00";
+                            dateTimeStr = dateTimeStr.replaceAll("[\\u00A0\\u200B\\uFEFF]", " ").replaceAll("[-–—]", "-");
+
+                            // Handle old space-separated format as fallback
+                            if (dateTimeStr.contains(" ") && !dateTimeStr.contains(";")) {
+                                dateTimeStr = dateTimeStr.replaceFirst(" ", ";");
+                                LOGGER.info("Converted space to semicolon: '" + dateTimeStr + "'");
+                            }
+
+                            LOGGER.info("Attempting to parse dateStr: '" + dateTimeStr + "'");
+                            LOGGER.info("dateStr bytes: " + Arrays.toString(dateTimeStr.getBytes()));
+
                             Date date;
                             try {
-                                date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(dateStr);
-                            } catch (Exception e) {
-                                throw new IllegalArgumentException("Format de date invalide. Utilisez yyyy-MM-dd HH:mm");
+                                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd;HH:mm", Locale.US);
+                                sdf.setLenient(false);
+                                try {
+                                    date = sdf.parse(dateTimeStr);
+                                } catch (ParseException e) {
+                                    sdf = new SimpleDateFormat("yyyy-MM-dd;H:mm", Locale.US);
+                                    sdf.setLenient(false);
+                                    date = sdf.parse(dateTimeStr);
+                                }
+                            } catch (ParseException e) {
+                                // Try old format as fallback
+                                try {
+                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US);
+                                    sdf.setLenient(false);
+                                    date = sdf.parse(dateTimeStr.replace(";", " "));
+                                } catch (ParseException e2) {
+                                    throw new IllegalArgumentException("Format de date invalide. Utilisez yyyy-MM-dd;HH:mm ou yyyy-MM-dd;H:mm (ex. 2025-06-01;15:00 ou 2025-06-01;9:00)");
+                                }
                             }
                             Event evenement = new Event(description, date);
                             if (checkConflit(evenement)) {
@@ -84,10 +112,13 @@ public class AgentEvenements extends Agent {
                             }
                             LOGGER.info("Sent event list: " + reply.getContent());
                         } else {
-                            reply.setContent("❌ Commande inconnue. Essayez : planifie <événement>:<yyyy-MM-dd HH:mm>, supprime <événement>, liste_evenements");
+                            reply.setContent("❌ Commande inconnue. Essayez : planifie_evenement:<événement>:<yyyy-MM-dd;HH:mm>, supprime_evenement:<événement>, liste_evenements");
                         }
-                    } catch (Exception e) {
+                    } catch (IllegalArgumentException e) {
                         LOGGER.warning("Erreur lors du traitement de la commande : " + contenu + " - " + e.getMessage());
+                        reply.setContent("Erreur : " + e.getMessage());
+                    } catch (Exception e) {
+                        LOGGER.warning("Erreur inattendue lors du traitement de la commande : " + contenu + " - " + e.getMessage());
                         e.printStackTrace();
                         reply.setContent("Erreur : " + e.getMessage());
                     }
@@ -114,7 +145,7 @@ public class AgentEvenements extends Agent {
             mapper.registerModule(new JavaTimeModule());
             mapper.writeValue(file, listeEvenements);
             LOGGER.info("Événements sauvegardés dans events.json");
-        } catch (Throwable t) { // Catch Throwable to handle NoClassDefFoundError
+        } catch (Throwable t) {
             LOGGER.severe("Erreur sauvegarde événements : " + t.getMessage());
             t.printStackTrace();
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
@@ -135,7 +166,7 @@ public class AgentEvenements extends Agent {
             } else {
                 LOGGER.info("Aucun fichier events.json trouvé, démarrage avec une liste vide.");
             }
-        } catch (Throwable t) { // Catch Throwable to handle NoClassDefFoundError
+        } catch (Throwable t) {
             LOGGER.severe("Erreur chargement événements : " + t.getMessage());
             t.printStackTrace();
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
