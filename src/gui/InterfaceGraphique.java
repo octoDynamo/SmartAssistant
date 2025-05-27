@@ -210,21 +210,33 @@ public class InterfaceGraphique extends JFrame {
                     }
                     onglets.setSelectedIndex(onglets.indexOfTab("Événements"));
                     statusLabel.setText("Liste des événements mise à jour");
-                } else if (message.toLowerCase().startsWith("liste des tâches:")) {
-                    modelTaches.setRowCount(0);
+                } else if (message.toLowerCase().startsWith("liste des tâches :")) {
+                    modelTaches.setRowCount(0); // Vider le tableau
                     String[] lignes = message.split("\n");
                     for (int i = 1; i < lignes.length; i++) {
                         String line = lignes[i].trim();
-                        if (!line.isEmpty() && !line.equalsIgnoreCase("Aucune tâche.")) {
+                        if (!line.isEmpty()) {
+                            // Format attendu: "- Description (Due: 2023-05-30T15:30, Priority: Haute)"
                             if (line.startsWith("- ")) {
                                 line = line.substring(2);
                             }
-                            String[] parts = line.split(" \\(Due: |, Priority: ");
-                            if (parts.length == 3) {
-                                String description = parts[0].trim();
-                                String date = parts[1].replace(")", "").trim();
-                                String priority = parts[2].replace(")", "").trim();
-                                modelTaches.addRow(new Object[]{description, date, priority});
+                            // Extraire les parties entre parenthèses
+                            int openParen = line.indexOf("(Due: ");
+                            int closeParen = line.lastIndexOf(")");
+
+                            if (openParen > 0 && closeParen > openParen) {
+                                String description = line.substring(0, openParen).trim();
+                                String details = line.substring(openParen + 1, closeParen);
+
+                                // Extraire date et priorité
+                                String[] parts = details.split(", Priority: ");
+                                if (parts.length == 2) {
+                                    String dateStr = parts[0].replace("Due: ", "").trim();
+                                    String priority = parts[1].trim();
+
+                                    // Ajouter au modèle de tableau
+                                    modelTaches.addRow(new Object[]{description, dateStr, priority});
+                                }
                             }
                         }
                     }
