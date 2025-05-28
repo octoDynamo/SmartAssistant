@@ -6,25 +6,24 @@ import java.util.Date;
 import java.text.SimpleDateFormat;
 
 public class Event {
-    private String description;
+    private String titre;
     private Date date;
 
-    // No-arg constructor for Jackson deserialization
     public Event() {
     }
 
     @JsonCreator
-    public Event(@JsonProperty("description") String description, @JsonProperty("date") Date date) {
-        this.description = description;
+    public Event(@JsonProperty("titre") String titre, @JsonProperty("date") Date date) {
+        this.titre = titre;
         this.date = date;
     }
 
-    public String getDescription() {
-        return description;
+    public String getTitre() {
+        return titre;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setTitre(String titre) {
+        this.titre = titre;
     }
 
     public Date getDate() {
@@ -38,6 +37,6 @@ public class Event {
     @Override
     public String toString() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-        return description + " (Date: " + sdf.format(date) + ")";
+        return titre + " (Date: " + sdf.format(date) + ")";
     }
 }

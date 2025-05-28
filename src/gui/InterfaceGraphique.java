@@ -1,8 +1,9 @@
 package gui;
 
-import agents.ClientAgent;
+import agents.AgentCoordination;
 import com.formdev.flatlaf.FlatDarkLaf;
-import jade.core.Agent;
+import models.Task;
+import models.Event;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -17,10 +18,13 @@ public class InterfaceGraphique extends JFrame {
     private JTextField champCommande;
     private JTabbedPane onglets;
     private JLabel statusLabel;
-    private Agent agent;
+    private AgentCoordination agentCoordination;
+    private JTextField nomUtilisateurField;
+    private JPasswordField motDePasseField;
+    private JPanel mainPanel;
 
-    public InterfaceGraphique(Agent agent) {
-        this.agent = agent;
+    public InterfaceGraphique(AgentCoordination agentCoordination) {
+        this.agentCoordination = agentCoordination;
 
         try {
             UIManager.setLookAndFeel(new FlatDarkLaf());
@@ -36,6 +40,69 @@ public class InterfaceGraphique extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         setMinimumSize(new Dimension(650, 450));
+
+        // Initialize login panel
+        showLoginPanel();
+
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    private void showLoginPanel() {
+        Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
+
+        JPanel loginPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        loginPanel.setBackground(new Color(35, 35, 50));
+        loginPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel usernameLabel = new JLabel("Nom d'utilisateur:");
+        usernameLabel.setFont(regularFont);
+        usernameLabel.setForeground(Color.WHITE);
+        nomUtilisateurField = new JTextField();
+        nomUtilisateurField.setFont(regularFont);
+        nomUtilisateurField.setBackground(new Color(60, 63, 65));
+        nomUtilisateurField.setForeground(Color.WHITE);
+        nomUtilisateurField.setCaretColor(Color.WHITE);
+
+        JLabel passwordLabel = new JLabel("Mot de passe:");
+        passwordLabel.setFont(regularFont);
+        passwordLabel.setForeground(Color.WHITE);
+        motDePasseField = new JPasswordField();
+        motDePasseField.setFont(regularFont);
+        motDePasseField.setBackground(new Color(60, 63, 65));
+        motDePasseField.setForeground(Color.WHITE);
+        motDePasseField.setCaretColor(Color.WHITE);
+
+        JButton loginButton = new JButton("Se connecter");
+        loginButton.setFont(regularFont);
+        loginButton.setBackground(new Color(76, 175, 80));
+        loginButton.setForeground(Color.WHITE);
+        loginButton.addActionListener(e -> {
+            String nomUtilisateur = nomUtilisateurField.getText();
+            String motDePasse = new String(motDePasseField.getPassword());
+            if (agentCoordination.connecterUtilisateur(nomUtilisateur, motDePasse)) {
+                agentCoordination.getClientAgent().setLoggedIn(true); // Notify ClientAgent of login
+                showMainInterface();
+            } else {
+                JOptionPane.showMessageDialog(this, "Échec de la connexion.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        loginPanel.add(usernameLabel);
+        loginPanel.add(nomUtilisateurField);
+        loginPanel.add(passwordLabel);
+        loginPanel.add(motDePasseField);
+        loginPanel.add(new JLabel());
+        loginPanel.add(loginButton);
+
+        getContentPane().removeAll();
+        add(loginPanel, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private void showMainInterface() {
+        getContentPane().removeAll();
 
         Font titleFont = new Font("Segoe UI", Font.BOLD, 20);
         Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
@@ -88,7 +155,7 @@ public class InterfaceGraphique extends JFrame {
         onglets.setBackground(new Color(45, 45, 60));
         onglets.setForeground(Color.WHITE);
 
-        String[] colonnesTaches = {"Description", "Date d'échéance", "Priorité"};
+        String[] colonnesTaches = {"Description", "Priorité"};
         modelTaches = new DefaultTableModel(colonnesTaches, 0);
         tableTaches = new JTable(modelTaches);
         styleTable(tableTaches);
@@ -125,12 +192,18 @@ public class InterfaceGraphique extends JFrame {
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(headerPanel, BorderLayout.NORTH);
         topPanel.add(commandPanel, BorderLayout.CENTER);
-        add(topPanel, BorderLayout.NORTH);
-        add(onglets, BorderLayout.CENTER);
-        add(statusPanel, BorderLayout.SOUTH);
 
-        setLocationRelativeTo(null);
-        setVisible(true);
+        mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        mainPanel.add(onglets, BorderLayout.CENTER);
+        mainPanel.add(statusPanel, BorderLayout.SOUTH);
+
+        add(mainPanel, BorderLayout.CENTER);
+        revalidate();
+        repaint();
+
+        // Populate tables with user's tasks and events after login
+        updateTables();
     }
 
     private void styleTable(JTable table) {
@@ -156,6 +229,20 @@ public class InterfaceGraphique extends JFrame {
         }
     }
 
+    private void updateTables() {
+        // Update tasks table
+        modelTaches.setRowCount(0);
+        for (Task task : agentCoordination.getUtilisateurActuel().getTaches()) {
+            modelTaches.addRow(new Object[]{task.getDescription(), task.getPriority()});
+        }
+
+        // Update events table
+        modelEvenements.setRowCount(0);
+        for (Event event : agentCoordination.getUtilisateurActuel().getEvenements()) {
+            modelEvenements.addRow(new Object[]{event.getTitre(), event.getDate()});
+        }
+    }
+
     private void envoyerCommande(ActionEvent e) {
         String commande = champCommande.getText().trim();
         if (commande.isEmpty()) {
@@ -172,8 +259,8 @@ public class InterfaceGraphique extends JFrame {
                 return;
             }
 
-            // Déléguer au ClientAgent
-            ((ClientAgent) agent).envoyerCommande(commande);
+            // Send command via ClientAgent (accessed through AgentCoordination)
+            agentCoordination.getClientAgent().envoyerCommande(commande);
             champCommande.setText("");
             statusLabel.setText("Commande envoyée: " + commande);
         } catch (Exception ex) {
@@ -185,64 +272,16 @@ public class InterfaceGraphique extends JFrame {
     public void afficherReponse(String message) {
         SwingUtilities.invokeLater(() -> {
             try {
-                if (message.toLowerCase().startsWith("liste des événements:")) {
-                    modelEvenements.setRowCount(0);
-                    String[] lignes = message.split("\n");
-                    boolean hasEvents = false;
-                    for (int i = 1; i < lignes.length; i++) {
-                        String line = lignes[i].trim();
-                        if (!line.isEmpty() && !line.equalsIgnoreCase("Aucun événement planifié.")) {
-                            if (line.startsWith("- ")) {
-                                line = line.substring(2);
-                            }
-                            String[] parts = line.split(" \\(Date: ");
-                            if (parts.length == 2) {
-                                String description = parts[0].trim();
-                                String date = parts[1].replace(")", "").trim();
-                                modelEvenements.addRow(new Object[]{description, date});
-                                hasEvents = true;
-                            }
-                        }
-                    }
-                    if (!hasEvents) {
-                        zoneErreurs.append("Aucun événement planifié.\n");
-                        JOptionPane.showMessageDialog(null, "Aucun événement planifié.", "SmartAssistant", JOptionPane.INFORMATION_MESSAGE);
-                    }
+                if (message.equalsIgnoreCase("Aucun événement trouvé.") || message.toLowerCase().startsWith("événements :")) {
+                    updateTables(); // Refresh tables to show updated events
                     onglets.setSelectedIndex(onglets.indexOfTab("Événements"));
                     statusLabel.setText("Liste des événements mise à jour");
-                } else if (message.toLowerCase().startsWith("liste des tâches :")) {
-                    modelTaches.setRowCount(0); // Vider le tableau
-                    String[] lignes = message.split("\n");
-                    for (int i = 1; i < lignes.length; i++) {
-                        String line = lignes[i].trim();
-                        if (!line.isEmpty()) {
-                            // Format attendu: "- Description (Due: 2023-05-30T15:30, Priority: Haute)"
-                            if (line.startsWith("- ")) {
-                                line = line.substring(2);
-                            }
-                            // Extraire les parties entre parenthèses
-                            int openParen = line.indexOf("(Due: ");
-                            int closeParen = line.lastIndexOf(")");
-
-                            if (openParen > 0 && closeParen > openParen) {
-                                String description = line.substring(0, openParen).trim();
-                                String details = line.substring(openParen + 1, closeParen);
-
-                                // Extraire date et priorité
-                                String[] parts = details.split(", Priority: ");
-                                if (parts.length == 2) {
-                                    String dateStr = parts[0].replace("Due: ", "").trim();
-                                    String priority = parts[1].trim();
-
-                                    // Ajouter au modèle de tableau
-                                    modelTaches.addRow(new Object[]{description, dateStr, priority});
-                                }
-                            }
-                        }
-                    }
+                } else if (message.equalsIgnoreCase("Aucune tâche trouvée.") || message.toLowerCase().startsWith("tâches :")) {
+                    updateTables(); // Refresh tables to show updated tasks
                     onglets.setSelectedIndex(onglets.indexOfTab("Tâches"));
                     statusLabel.setText("Liste des tâches mise à jour");
-                } else if (message.toLowerCase().startsWith("météo à") || message.toLowerCase().startsWith("recette :") || message.toLowerCase().startsWith("extrait wikipedia :") || message.toLowerCase().startsWith("1. ")) {
+                } else if (message.toLowerCase().startsWith("météo à") || message.toLowerCase().startsWith("recette :") ||
+                        message.toLowerCase().startsWith("extrait wikipedia :") || message.toLowerCase().startsWith("1. ")) {
                     zoneRecherche.setText(message);
                     onglets.setSelectedIndex(onglets.indexOfTab("Recherche"));
                     statusLabel.setText("Résultats de recherche mis à jour");
@@ -270,7 +309,6 @@ public class InterfaceGraphique extends JFrame {
 
         Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
 
-        // Hour and minute dropdowns
         String[] hours = new String[24];
         for (int i = 0; i < 24; i++) {
             hours[i] = String.format("%02d", i);
@@ -286,7 +324,6 @@ public class InterfaceGraphique extends JFrame {
         hourCombo.setForeground(Color.WHITE);
         minuteCombo.setForeground(Color.WHITE);
 
-        // Set default to current hour
         java.util.Calendar cal = java.util.Calendar.getInstance();
         hourCombo.setSelectedIndex(cal.get(java.util.Calendar.HOUR_OF_DAY));
         minuteCombo.setSelectedIndex(0);

@@ -7,12 +7,18 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
+import models.Task; // Use models.Task
 
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
-import java.time.*;
-import java.util.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,17 +51,12 @@ public class AgentTaches extends Agent {
                         List<Task> tasks = taskManager.getSortedTasks();
                         StringBuilder sb = new StringBuilder("Liste des tâches :\n");
                         for (Task t : tasks) {
-                            String prioStr = switch (t.getPriority()) {
-                                case 1 -> "Haute";
-                                case 3 -> "Basse";
-                                default -> "Moyenne";
-                            };
                             sb.append("- ")
                                     .append(t.getDescription())
                                     .append(" (Due: ")
-                                    .append(t.getDateTime())
+                                    .append(t.getDueDate() != null ? t.getDueDate() : "N/A")
                                     .append(", Priority: ")
-                                    .append(prioStr)
+                                    .append(t.getPriority())
                                     .append(")\n");
                         }
                         sendReply(msg, sb.toString());
@@ -73,7 +74,9 @@ public class AgentTaches extends Agent {
 
                             // Vérifier la disponibilité du créneau
                             if (isTimeSlotAvailable(dateTime)) {
-                                Task task = new Task(parsed.description, dateTime, parsed.priority);
+                                // Convert int priority to String as expected by models.Task
+                                String priorityStr = convertPriority(parsed.priority);
+                                Task task = new Task(parsed.description, Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant()), priorityStr);
                                 taskManager.addTask(task);
 
                                 // Réserver le créneau
@@ -103,12 +106,18 @@ public class AgentTaches extends Agent {
                 List<Task> dueSoon = taskManager.getTasksDueSoon();
                 LocalDateTime now = LocalDateTime.now();
                 for (Task task : dueSoon) {
-                    if (task.getDateTime().isBefore(now.plusSeconds(10))) {
+                    LocalDateTime taskDateTime = task.getDueDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+                    if (taskDateTime.isBefore(now.plusSeconds(10))) {
                         showPopup(task.getDescription());
                     }
                 }
             }
         });
+    }
+
+    public void ajouterTache(Task tache) { // Use models.Task
+        taskManager.addTask(tache);
+        System.out.println("Tâche ajoutée: " + tache.getDescription());
     }
 
     private boolean isTimeSlotAvailable(LocalDateTime dateTime) {
@@ -127,7 +136,7 @@ public class AgentTaches extends Agent {
     }
 
     private void reserveTimeSlot(Task task) {
-        Date date = Date.from(task.getDateTime().atZone(ZoneId.systemDefault()).toInstant());
+        Date date = task.getDueDate();
 
         ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
         msg.addReceiver(new AID("agentEvenements", AID.ISLOCALNAME));
@@ -176,40 +185,18 @@ public class AgentTaches extends Agent {
         return null;
     }
 
-    public static class Task {
-        private String description;
-        private LocalDateTime dateTime;
-        private int priority;
-
-        public Task() {}
-        public Task(String description, LocalDateTime dateTime, int priority) {
-            this.description = description;
-            this.dateTime = dateTime;
-            this.priority = priority;
-        }
-
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-
-        public LocalDateTime getDateTime() { return dateTime; }
-        public void setDateTime(LocalDateTime dateTime) { this.dateTime = dateTime; }
-
-        public int getPriority() { return priority; }
-        public void setPriority(int priority) { this.priority = priority; }
-
-        @Override
-        public String toString() {
-            String prioStr = switch (priority) {
-                case 1 -> "Haute";
-                case 3 -> "Basse";
-                default -> "Moyenne";
-            };
-            return "- " + description + " (Due: " + dateTime + ", Priority: " + prioStr + ")";
+    // Helper method to convert int priority to String
+    private String convertPriority(int priority) {
+        switch (priority) {
+            case 1: return "High";
+            case 2: return "Medium";
+            case 3: return "Low";
+            default: return "Medium";
         }
     }
 
     public static class TaskManager {
-        private final List<Task> tasks = new ArrayList<>();
+        private final List<Task> tasks = new ArrayList<>(); // Use models.Task
         private final File file = new File("tasks.json");
 
         public TaskManager() {
@@ -228,7 +215,12 @@ public class AgentTaches extends Agent {
 
         public List<Task> getSortedTasks() {
             return tasks.stream()
-                    .sorted(Comparator.comparing(Task::getDateTime).thenComparing(Task::getPriority))
+                    .sorted(Comparator.comparing(Task::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                            .thenComparing(Task::getPriority, (p1, p2) -> {
+                                int rank1 = "High".equals(p1) ? 1 : "Medium".equals(p1) ? 2 : 3;
+                                int rank2 = "High".equals(p2) ? 1 : "Medium".equals(p2) ? 2 : 3;
+                                return Integer.compare(rank1, rank2);
+                            }))
                     .collect(Collectors.toList());
         }
 
@@ -236,7 +228,11 @@ public class AgentTaches extends Agent {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime soon = now.plusMinutes(5);
             return tasks.stream()
-                    .filter(t -> t.getDateTime() != null && !t.getDateTime().isBefore(now) && !t.getDateTime().isAfter(soon))
+                    .filter(t -> t.getDueDate() != null)
+                    .filter(t -> {
+                        LocalDateTime taskDateTime = t.getDueDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+                        return !taskDateTime.isBefore(now) && !taskDateTime.isAfter(soon);
+                    })
                     .collect(Collectors.toList());
         }
 
@@ -264,20 +260,15 @@ public class AgentTaches extends Agent {
 
     public static class TaskParser {
         public static ParsedTask parseNaturalCommand(String text) {
-            // Supprime "ajoute" et ses variantes au début
             String cleaned = text.replaceFirst("(?i)^ajoute( une)? (tâche|tache)?( pour)?", "").trim();
 
-            // Extrait la priorité et nettoie
             int priority = extractPriority(cleaned);
             cleaned = cleanPriorityKeywords(cleaned);
 
-            // Extrait l'heure (doit être fait avant cleanDescription)
             LocalTime time = extractTime(cleaned);
 
-            // Nettoie la description (doit être fait après extractTime)
             String description = cleanDescription(cleaned);
 
-            // Date par défaut : aujourd'hui
             LocalDate date = extractDate(cleaned);
             if (date == null) {
                 date = LocalDate.now();
@@ -311,16 +302,10 @@ public class AgentTaches extends Agent {
         }
 
         public static String cleanDescription(String text) {
-            // Supprime les heures (comme "18:00")
             String cleaned = text.replaceAll("\\b\\d{1,2}[h:]\\d{2}\\b", "");
-
-            // Supprime les dates
             cleaned = cleaned.replaceAll("\\b\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}\\b", "");
             cleaned = cleaned.replaceAll("\\b\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}\\b", "");
-
-            // Supprime les mots-clés résiduels
             cleaned = cleaned.replaceAll("(?i)\\b(ajoute|tâche|tache|pour|demain|aujourd'hui)\\b", "");
-
             return cleaned.trim();
         }
 
@@ -341,7 +326,7 @@ public class AgentTaches extends Agent {
             if (lowered.matches(".*\\b(important|moyen)\\b.*")) {
                 return 2;
             }
-            return 2; // Priorité moyenne par défaut
+            return 2;
         }
 
         public static class ParsedTask {

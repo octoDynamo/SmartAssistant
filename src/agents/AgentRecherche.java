@@ -3,15 +3,16 @@ package agents;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AgentRecherche extends Agent {
 
@@ -36,7 +37,7 @@ public class AgentRecherche extends Agent {
                     } else if (contenu.startsWith("recherche_wiki:")) {
                         String terme = contenu.split(":", 2)[1];
                         resultat = fetchWiki(terme);
-                    } else if (contenu.startsWith("recherche_web:")) {
+                    } else if (contenu.startsWith("rechercher_web:")) { // Fixed typo: "recherche_web" to "rechercher_web"
                         String requete = contenu.split(":", 2)[1];
                         resultat = fetchWebSearch(requete);
                     } else if (contenu.equals("recherche_news")) {
@@ -55,10 +56,47 @@ public class AgentRecherche extends Agent {
         });
     }
 
+    // Public method for external access
+    public List<String> rechercherWeb(String requete) {
+        List<String> results = new ArrayList<>();
+        String result = fetchWebSearch(requete);
+        results.add(result);
+        return results;
+    }
+
+    // Private helper method
+    private String fetchWebSearch(String requete) {
+        try {
+            String urlStr = "https://api.duckduckgo.com/?q=" + URLEncoder.encode(requete, "UTF-8").replace(" ", "+") + "&format=json";
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder responseSB = new StringBuilder();
+            String line;
+            while ((line = in.readLine()) != null) {
+                responseSB.append(line);
+            }
+            in.close();
+
+            JSONObject json = new JSONObject(responseSB.toString());
+            String result = json.optString("AbstractText");
+
+            if (result == null || result.isEmpty()) {
+                return "Aucun résultat trouvé pour : " + requete;
+            }
+            return "Résultat : " + result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur lors de la recherche web.";
+        }
+    }
+
     // -------- API MÉTÉO --------
     private String fetchWeather(String ville) {
         try {
-            String urlStr = "http://api.openweathermap.org/data/2.5/weather?q=" + ville +
+            String urlStr = "http://api.openweathermap.org/data/2.5/weather?q=" + URLEncoder.encode(ville, "UTF-8") +
                     "&appid=" + OPENWEATHER_API_KEY + "&units=metric&lang=fr";
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -86,7 +124,7 @@ public class AgentRecherche extends Agent {
     // -------- API RECETTE --------
     private String fetchRecipe(String nomRecette) {
         try {
-            String urlStr = "https://www.themealdb.com/api/json/v1/1/search.php?s=" + nomRecette.replace(" ", "%20");
+            String urlStr = "https://www.themealdb.com/api/json/v1/1/search.php?s=" + URLEncoder.encode(nomRecette, "UTF-8").replace(" ", "%20");
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
@@ -117,39 +155,10 @@ public class AgentRecherche extends Agent {
         }
     }
 
-    // -------- API RECHERCHE WEB --------
-    private String fetchWebSearch(String requete) {
-        try {
-            String urlStr = "https://api.duckduckgo.com/?q=" + requete.replace(" ", "+") + "&format=json";
-            URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            StringBuilder responseSB = new StringBuilder();
-            String line;
-            while ((line = in.readLine()) != null) {
-                responseSB.append(line);
-            }
-            in.close();
-
-            JSONObject json = new JSONObject(responseSB.toString());
-            String result = json.optString("AbstractText");
-
-            if (result == null || result.isEmpty()) {
-                return "Aucun résultat trouvé pour : " + requete;
-            }
-            return "Résultat : " + result;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Erreur lors de la recherche web.";
-        }
-    }
-
     // -------- API WIKIPEDIA --------
     private String fetchWiki(String terme) {
         try {
-            String urlStr = "https://fr.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext=true&format=json&titles=" + terme.replace(" ", "%20");
+            String urlStr = "https://fr.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext=true&format=json&titles=" + URLEncoder.encode(terme, "UTF-8").replace(" ", "%20");
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
@@ -182,6 +191,7 @@ public class AgentRecherche extends Agent {
             return "Erreur lors de la recherche Wikipedia.";
         }
     }
+
     // -------- API NEWS --------
     private String getNews() {
         try {
@@ -221,8 +231,7 @@ public class AgentRecherche extends Agent {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return "Erreur : " + e.getMessage(); // Affiche l'erreur précise
+            return "Erreur : " + e.getMessage();
         }
     }
-
 }
